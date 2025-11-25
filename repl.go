@@ -2,10 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/tdanieljr/pokedexcli/internal/pokeapi"
 	"os"
 	"strings"
-
-	"github.com/tdanieljr/pokedexcli/internal/pokeapi"
 )
 
 type cliCommand struct {
@@ -14,6 +13,7 @@ type cliCommand struct {
 	callback    func(*config) error
 }
 type config struct {
+	Client   pokeapi.Client
 	Next     string
 	Previous string
 }
@@ -42,7 +42,7 @@ var supportedCommands = map[string]cliCommand{
 }
 
 func commandMap(c *config) error {
-	results, err := pokeapi.GetAreas(c.Next)
+	results, err := c.Client.GetAreas(c.Next)
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func commandMap(c *config) error {
 	return nil
 }
 func commandMapb(c *config) error {
-	results, err := pokeapi.GetAreas(c.Previous)
+	results, err := c.Client.GetAreas(c.Previous)
 	if err != nil {
 		return err
 	}

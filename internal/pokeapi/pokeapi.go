@@ -4,7 +4,15 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/tdanieljr/pokedexcli/internal/pokecache"
 )
+
+type Client struct {
+	Cache  *pokecache.Cache
+	Client *http.Client
+}
 
 type PokeAPI struct {
 	Count    int     `json:"count"`
@@ -16,11 +24,24 @@ type PokeAPI struct {
 	} `json:"results"`
 }
 
-func GetAreas(url string) (PokeAPI, error) {
+func NewClient(interval time.Duration) Client {
+	c := pokecache.NewCache(interval)
+	cl := http.DefaultClient
+	return Client{Cache: c, Client: cl}
+}
+
+func (c *Client) GetAreas(url string) (PokeAPI, error) {
 	var response *http.Response
 	var err error
+	body, ok := c.Cache.Get(url)
+	if ok {
+		var results PokeAPI
+		json.Unmarshal(body, &results)
+		return results, nil
+	}
+
 	if url == "" {
-		response, err = http.Get("https://pokeapi.co/api/v2/location-area?limit=20")
+		response, err = c.Client.Get("https://pokeapi.co/api/v2/location-area?limit=20")
 		if err != nil {
 			return PokeAPI{}, err
 		}
@@ -33,10 +54,11 @@ func GetAreas(url string) (PokeAPI, error) {
 	}
 
 	defer response.Body.Close()
-	body, err := io.ReadAll(response.Body)
+	body, err = io.ReadAll(response.Body)
 	if err != nil {
 		return PokeAPI{}, err
 	}
+	c.Cache.Add(url, body)
 	var results PokeAPI
 	json.Unmarshal(body, &results)
 	return results, nil
