@@ -52,6 +52,32 @@ var supportedCommands = map[string]cliCommand{
 		description: "Catch named pokemon",
 		callback:    commandCatch,
 	},
+	"inspect": {
+		name:        "inspect",
+		description: "Inspect named pokemon",
+		callback:    commandInspect,
+	},
+	"pokedex": {
+		name:        "pokedex",
+		description: "Print Pokedex",
+		callback:    commandPokedex,
+	},
+}
+
+func commandInspect(c *config, args ...string) error {
+	data, ok := c.Pokedex[args[0]]
+	if !ok {
+		fmt.Println("you have not caught that pokemon")
+		return nil
+	}
+	fmt.Printf("%v\n", data)
+	return nil
+}
+func commandPokedex(c *config, args ...string) error {
+	for key := range c.Pokedex {
+		fmt.Printf("- %s\n", key)
+	}
+	return nil
 }
 
 func commandCatch(c *config, args ...string) error {
