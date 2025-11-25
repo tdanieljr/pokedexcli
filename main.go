@@ -11,9 +11,10 @@ import (
 
 func main() {
 	client := pokeapi.NewClient(5 * time.Second)
+	pokedex := make(map[string]pokeapi.Pokemon)
 	fmt.Print("Pokedex >")
 	scanner := bufio.NewScanner(os.Stdin)
-	c := &config{Client: client}
+	c := &config{Client: client, Pokedex: pokedex}
 	for {
 		ok := scanner.Scan()
 		if !ok {
@@ -31,10 +32,20 @@ func main() {
 			fmt.Print("Pokedex >")
 			continue
 		}
-		err := callBack.callback(c)
-		if err != nil {
-			fmt.Printf("%v\n", err)
-			fmt.Print("Pokedex >")
+		if len(s) > 1 {
+			err := callBack.callback(c, s[1])
+			if err != nil {
+				fmt.Printf("%v\n", err)
+				fmt.Print("Pokedex >")
+			}
+		} else {
+			err := callBack.callback(c)
+
+			if err != nil {
+				fmt.Printf("%v\n", err)
+				fmt.Print("Pokedex >")
+				continue
+			}
 		}
 		fmt.Print("Pokedex >")
 	}

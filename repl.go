@@ -2,20 +2,23 @@ package main
 
 import (
 	"fmt"
-	"github.com/tdanieljr/pokedexcli/internal/pokeapi"
+	"math/rand/v2"
 	"os"
 	"strings"
+
+	"github.com/tdanieljr/pokedexcli/internal/pokeapi"
 )
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*config) error
+	callback    func(*config, ...string) error
 }
 type config struct {
 	Client   pokeapi.Client
 	Next     string
 	Previous string
+	Pokedex  map[string]pokeapi.Pokemon
 }
 
 var supportedCommands = map[string]cliCommand{
@@ -39,9 +42,57 @@ var supportedCommands = map[string]cliCommand{
 		description: "Print previous locations",
 		callback:    commandMapb,
 	},
+	"explore": {
+		name:        "explore",
+		description: "Print pokemon in a location",
+		callback:    commandExplore,
+	},
+	"catch": {
+		name:        "catch",
+		description: "Catch named pokemon",
+		callback:    commandCatch,
+	},
 }
 
-func commandMap(c *config) error {
+func commandCatch(c *config, args ...string) error {
+	fmt.Printf("\nThrowing a Pokeball at %s...\n", args[0])
+	results, err := c.Client.GetPokemon(args[0])
+	if err != nil {
+		return err
+	}
+	baseExp := results.BaseExperience
+	throw := rand.IntN(baseExp)
+
+	if throw > baseExp/2 {
+		fmt.Printf("%s was caught!\n", args[0])
+
+		pokemon := pokeapi.Pokemon{
+			Name:   args[0],
+			ID:     results.ID,
+			BaseXP: baseExp,
+		}
+		c.Pokedex[args[0]] = pokemon
+
+	} else {
+		fmt.Printf("%s escaped!\n", args[0])
+
+	}
+
+	return nil
+}
+
+func commandExplore(c *config, args ...string) error {
+	fmt.Printf("Exploring %s...\n", args[0])
+	results, err := c.Client.GetLocation(args[0])
+	if err != nil {
+		return err
+	}
+	for _, encounter := range results.PokemonEncounters {
+		fmt.Printf("- %s\n", encounter.Pokemon.Name)
+	}
+	return nil
+}
+func commandMap(c *config, args ...string) error {
 	results, err := c.Client.GetAreas(c.Next)
 	if err != nil {
 		return err
@@ -57,7 +108,7 @@ func commandMap(c *config) error {
 	}
 	return nil
 }
-func commandMapb(c *config) error {
+func commandMapb(c *config, args ...string) error {
 	results, err := c.Client.GetAreas(c.Previous)
 	if err != nil {
 		return err
@@ -80,12 +131,12 @@ func cleanInput(text string) []string {
 
 	return s
 }
-func commandExit(c *config) error {
+func commandExit(c *config, args ...string) error {
 	fmt.Println("\nClosing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
-func commandHelp(*config) error {
+func commandHelp(c *config, args ...string) error {
 	fmt.Printf(
 		`
 Welcome to the Pokedex!

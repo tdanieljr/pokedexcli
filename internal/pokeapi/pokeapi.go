@@ -2,32 +2,67 @@ package pokeapi
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/tdanieljr/pokedexcli/internal/pokecache"
 	"io"
 	"net/http"
 	"time"
-
-	"github.com/tdanieljr/pokedexcli/internal/pokecache"
 )
 
 type Client struct {
 	Cache  *pokecache.Cache
 	Client *http.Client
 }
-
-type PokeAPI struct {
-	Count    int     `json:"count"`
-	Next     string  `json:"next"`
-	Previous *string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
+type Pokemon struct {
+	Name   string
+	ID     int
+	BaseXP int
 }
 
 func NewClient(interval time.Duration) Client {
 	c := pokecache.NewCache(interval)
 	cl := http.DefaultClient
 	return Client{Cache: c, Client: cl}
+}
+func (c *Client) GetPokemon(pokemon string) (PokeData, error) {
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s/", pokemon)
+	response, err := http.Get(url)
+	if err != nil {
+		return PokeData{}, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return PokeData{}, err
+	}
+	c.Cache.Add(url, body)
+	var results PokeData
+	json.Unmarshal(body, &results)
+	return results, nil
+}
+
+func (c *Client) GetLocation(area string) (PokeLocation, error) {
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s", area)
+
+	body, ok := c.Cache.Get(url)
+	if ok {
+		var results PokeLocation
+		json.Unmarshal(body, &results)
+		return results, nil
+	}
+	response, err := http.Get(url)
+	if err != nil {
+		return PokeLocation{}, err
+	}
+	defer response.Body.Close()
+	body, err = io.ReadAll(response.Body)
+	if err != nil {
+		return PokeLocation{}, err
+	}
+	c.Cache.Add(url, body)
+	var results PokeLocation
+	json.Unmarshal(body, &results)
+	return results, nil
 }
 
 func (c *Client) GetAreas(url string) (PokeAPI, error) {
